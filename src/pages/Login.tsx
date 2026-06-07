@@ -2,45 +2,46 @@ import * as React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Label } from '../components/ui/label';
 import { ShieldCheck, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [isSignUp, setIsSignUp] = useState(false);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
     try {
-      if (isSignUp) {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        // Ensure the initial profile gets created
-        await setDoc(doc(db, 'profiles', cred.user.uid), {
-          full_name: email.split('@')[0],
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      const cred = await signInWithPopup(auth, provider);
+      
+      // Ensure the profile exists
+      const userDocRef = doc(db, 'profiles', cred.user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        const email = cred.user.email || '';
+        await setDoc(userDocRef, {
+          full_name: cred.user.displayName || email.split('@')[0],
           role: email === 'fespugtsalamanca@gmail.com' ? 'superadmin' : 'consulta',
           created_at: Date.now(),
           updated_at: Date.now()
         });
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
       }
+      
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Error de autenticación');
+      console.error(err);
+      setError(err.message || 'Error de autenticación con Google');
       setLoading(false);
     }
   };
@@ -60,33 +61,11 @@ export default function Login() {
           <CardHeader>
             <CardTitle>Acceso al Panel</CardTitle>
             <CardDescription>
-              {isSignUp ? "Crea una nueva cuenta para acceder." : "Introduce tus credenciales para acceder."}
+              Inicia sesión con tu cuenta de Google (Gmail o corporativo de UGT).
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
-                <Input 
-                  id="email"
-                  type="email" 
-                  placeholder="admin@ugt-sp.es"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input 
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-
+            <div className="space-y-4">
               {error && (
                 <Alert variant="destructive" className="py-2">
                   <AlertCircle className="h-4 w-4" />
@@ -94,22 +73,14 @@ export default function Login() {
                 </Alert>
               )}
 
-              <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={loading}>
-                {loading ? 'Procesando...' : isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'}
-              </Button>
-            </form>
-            
-            <div className="mt-4 text-center">
-              <button 
-                type="button" 
-                className="text-xs text-slate-500 hover:text-slate-800 hover:underline"
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setError('');
-                }}
+              <Button 
+                onClick={handleGoogleLogin} 
+                className="w-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2" 
+                disabled={loading}
               >
-                {isSignUp ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Regístrate"}
-              </button>
+                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                {loading ? 'Conectando...' : 'Acceder con Google'}
+              </Button>
             </div>
           </CardContent>
         </Card>
