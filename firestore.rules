@@ -35,7 +35,7 @@ service cloud.firestore {
     }
 
     match /profiles/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || canModifyAll());
+      allow read: if isAuthenticated();
       
       function isValidProfile(data) {
         return data.keys().hasAll(['full_name', 'role', 'created_at', 'updated_at']) &&
@@ -45,10 +45,7 @@ service cloud.firestore {
                data.updated_at is number;
       }
 
-      allow create: if isAuthenticated() && request.auth.uid == userId && isValidProfile(incoming()) && (
-        incoming().role == 'consulta' || 
-        (incoming().role == 'superadmin' && request.auth.token.email == 'fespugtsalamanca@gmail.com')
-      );
+      allow create: if isAuthenticated() && request.auth.uid == userId && isValidProfile(incoming());
       allow update: if canModifyAll() && isValidProfile(incoming());
     }
 
