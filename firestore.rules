@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Role checks
+    function hasRole(roleName) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == roleName;
+    }
+
+    function isSuperAdmin() { return hasRole('superadmin'); }
+    function isFormacionAdmin() { return hasRole('formacion_admin'); }
+    function isFormacionEditor() { return hasRole('formacion_editor'); }
+
+    function isAdminOrEditor() {
+      return isSuperAdmin() || isFormacionAdmin() || isFormacionEditor();
+    }
+
+    function canModifyAll() {
+      return isSuperAdmin() || isFormacionAdmin();
+    }
+
+    match /profiles/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || canModifyAll());
+      
+      function isValidProfile(data) {
+        return data.keys().hasAll(['full_name', 'role', 'created_at', 'updated_at']) &&
+               data.full_name is string && data.full_name.size() <= 200 &&
+               data.role in ['superadmin', 'formacion_admin', 'formacion_editor', 'consulta'] &&
+               data.created_at is number &&
+               data.updated_at is number;
+      }
+
+      allow create: if isAuthenticated() && request.auth.uid == userId && isValidProfile(incoming()) && incoming().role == 'consulta';
+      allow update: if canModifyAll() && isValidProfile(incoming());
+    }
+
+    match /people/{personId} {
+      allow read: if isAuthenticated();
+      
+      function isValidPerson(data) {
+        return data.keys().hasAll(['full_name', 'created_at', 'updated_at', 'created_by']) &&
+               data.full_name is string && data.full_name.size() <= 200 &&
+               data.created_at is number &&
+               data.updated_at is number &&
+               data.created_by is string;
+      }
+
+      allow create: if isAdminOrEditor() && isValidPerson(incoming()) && incoming().created_by == request.auth.uid;
+      allow update: if isAdminOrEditor() && isValidPerson(incoming());
+      allow delete: if canModifyAll();
+    }
+
+    match /training_actions/{actionId} {
+      allow read: if isAuthenticated();
+      
+      function isValidAction(data) {
+        return data.keys().hasAll(['title', 'modality', 'start_date', 'end_date', 'total_hours', 'organizing_entity', 'official_recognition', 'status', 'created_at', 'updated_at', 'created_by']) &&
+               data.title is string && data.title.size() <= 300 &&
+               data.modality is string && data.modality.size() <= 50 &&
+               data.start_date is string && data.start_date.size() <= 50 &&
+               data.end_date is string && data.end_date.size() <= 50 &&
+               data.total_hours is number &&
+               data.organizing_entity is string && data.organizing_entity.size() <= 200 &&
+               data.official_recognition is bool &&
+               data.status in ['Borrador', 'Activa', 'Finalizada', 'Cancelada'] &&
+               data.created_at is number &&
+               data.updated_at is number &&
+               data.created_by is string;
+      }
+
+      allow create: if isAdminOrEditor() && isValidAction(incoming()) && incoming().created_by == request.auth.uid;
+      allow update: if isAdminOrEditor() && isValidAction(incoming());
+      allow delete: if canModifyAll();
+    }
+
+    match /certificates/{certificateId} {
+      // Allow unauthenticated reads for verification purposes
+      allow read: if true;
+      
+      function isValidCertificate(data) {
+        return data.keys().hasAll(['visible_code', 'verification_token', 'person_id', 'action_id', 'certificate_type', 'certified_hours', 'signed_by_name', 'signed_by_position', 'status', 'created_at', 'updated_at', 'created_by']) &&
+               data.visible_code is string && data.visible_code.size() <= 100 &&
+               data.verification_token is string && data.verification_token.size() <= 200 &&
+               data.person_id is string && data.person_id.size() <= 100 &&
+               data.action_id is string && data.action_id.size() <= 100 &&
+               data.certificate_type is string && data.certificate_type.size() <= 100 &&
+               data.certified_hours is number &&
+               data.signed_by_name is string && data.signed_by_name.size() <= 200 &&
+               data.signed_by_position is string && data.signed_by_position.size() <= 200 &&
+               data.status in ['borrador', 'emitido', 'válido', 'revocado', 'anulado', 'sustituido'] &&
+               data.created_at is number &&
+               data.updated_at is number &&
+               data.created_by is string;
+      }
+
+      allow create: if isAdminOrEditor() && isValidCertificate(incoming()) && incoming().created_by == request.auth.uid;
+      allow update: if isAdminOrEditor() && isValidCertificate(incoming());
+      allow delete: if canModifyAll();
+    }
+
+    match /certificate_events/{eventId} {
+      allow read: if isAuthenticated();
+      function isValidEvent(data) {
+        return data.keys().hasAll(['certificate_id', 'event_type', 'event_description', 'performed_by', 'created_at']) &&
+               data.certificate_id is string && data.certificate_id.size() <= 100 &&
+               data.event_type is string && data.event_type.size() <= 100 &&
+               data.event_description is string && data.event_description.size() <= 1000 &&
+               data.performed_by is string && data.performed_by.size() <= 100 &&
+               data.created_at is number;
+      }
+      allow create: if isAdminOrEditor() && isValidEvent(incoming());
+      allow update, delete: if false;
+    }
+  }
+}

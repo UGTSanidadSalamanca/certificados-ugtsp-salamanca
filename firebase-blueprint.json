@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "User profile containing roles",
+      "type": "object",
+      "properties": {
+        "full_name": { "type": "string" },
+        "role": { "type": "string", "enum": ["superadmin", "formacion_admin", "formacion_editor", "consulta"] },
+        "created_at": { "type": "number", "description": "Server timestamp" },
+        "updated_at": { "type": "number", "description": "Server timestamp" }
+      },
+      "required": ["full_name", "role", "created_at", "updated_at"]
+    },
+    "Person": {
+      "title": "Person",
+      "description": "Participant/Person records",
+      "type": "object",
+      "properties": {
+        "full_name": { "type": "string" },
+        "dni_nie": { "type": "string" },
+        "dni_last4": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "notes_internal": { "type": "string" },
+        "created_at": { "type": "number", "description": "Server timestamp" },
+        "updated_at": { "type": "number", "description": "Server timestamp" },
+        "created_by": { "type": "string", "description": "User ID of creator" }
+      },
+      "required": ["full_name", "created_at", "updated_at", "created_by"]
+    },
+    "TrainingAction": {
+      "title": "TrainingAction",
+      "description": "Courses, assemblies, meetings",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "description": { "type": "string" },
+        "syllabus": { "type": "string" },
+        "modality": { "type": "string", "enum": ["Presencial", "Online", "Mixta"] },
+        "location": { "type": "string" },
+        "start_date": { "type": "string" },
+        "end_date": { "type": "string" },
+        "total_hours": { "type": "number" },
+        "organizing_entity": { "type": "string" },
+        "external_entity": { "type": "string" },
+        "official_recognition": { "type": "boolean" },
+        "recognition_text": { "type": "string" },
+        "status": { "type": "string", "enum": ["Borrador", "Activa", "Finalizada", "Cancelada"] },
+        "created_at": { "type": "number", "description": "Server timestamp" },
+        "updated_at": { "type": "number", "description": "Server timestamp" },
+        "created_by": { "type": "string", "description": "User ID of creator" }
+      },
+      "required": ["title", "modality", "start_date", "end_date", "total_hours", "organizing_entity", "official_recognition", "status", "created_at", "updated_at", "created_by"]
+    },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Certificates issued to people for actions",
+      "type": "object",
+      "properties": {
+        "visible_code": { "type": "string" },
+        "verification_token": { "type": "string" },
+        "person_id": { "type": "string" },
+        "action_id": { "type": "string" },
+        "certificate_type": { "type": "string" },
+        "role_certified": { "type": "string" },
+        "certified_hours": { "type": "number" },
+        "issue_date": { "type": "string" },
+        "signed_by_name": { "type": "string" },
+        "signed_by_position": { "type": "string" },
+        "status": { "type": "string", "enum": ["borrador", "emitido", "válido", "revocado", "anulado", "sustituido"] },
+        "public_notes": { "type": "string" },
+        "internal_notes": { "type": "string" },
+        "pdf_path": { "type": "string" },
+        "pdf_sha256": { "type": "string" },
+        "replaced_by_certificate_id": { "type": "string" },
+        "revoked_reason": { "type": "string" },
+        "revoked_at": { "type": "string" },
+        "created_at": { "type": "number", "description": "Server timestamp" },
+        "updated_at": { "type": "number", "description": "Server timestamp" },
+        "created_by": { "type": "string" },
+        "issued_by": { "type": "string" }
+      },
+      "required": ["visible_code", "verification_token", "person_id", "action_id", "certificate_type", "certified_hours", "signed_by_name", "signed_by_position", "status", "created_at", "updated_at", "created_by"]
+    },
+    "CertificateEvent": {
+      "title": "CertificateEvent",
+      "description": "Audit trail for certificate modifications",
+      "type": "object",
+      "properties": {
+        "certificate_id": { "type": "string" },
+        "event_type": { "type": "string" },
+        "event_description": { "type": "string" },
+        "performed_by": { "type": "string" },
+        "created_at": { "type": "number" }
+      },
+      "required": ["certificate_id", "event_type", "event_description", "performed_by", "created_at"]
+    }
+  },
+  "firestore": {
+    "profiles/{userId}": {
+      "schema": { "$ref": "Profile" },
+      "description": "Holds user roles and basic info. ID corresponds to Auth UID."
+    },
+    "people/{personId}": {
+      "schema": { "$ref": "Person" },
+      "description": "List of people receiving training."
+    },
+    "training_actions/{actionId}": {
+      "schema": { "$ref": "TrainingAction" },
+      "description": "List of available courses/actions."
+    },
+    "certificates/{certificateId}": {
+      "schema": { "$ref": "Certificate" },
+      "description": "Certificates associated with actions and people."
+    },
+    "certificate_events/{eventId}": {
+      "schema": { "$ref": "CertificateEvent" },
+      "description": "Audit trails for certificates."
+    }
+  }
+}
