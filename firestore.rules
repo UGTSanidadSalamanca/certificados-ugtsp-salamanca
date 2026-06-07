@@ -45,7 +45,10 @@ service cloud.firestore {
                data.updated_at is number;
       }
 
-      allow create: if isAuthenticated() && request.auth.uid == userId && isValidProfile(incoming()) && incoming().role == 'consulta';
+      allow create: if isAuthenticated() && request.auth.uid == userId && isValidProfile(incoming()) && (
+        incoming().role == 'consulta' || 
+        (incoming().role == 'superadmin' && request.auth.token.email == 'fespugtsalamanca@gmail.com')
+      );
       allow update: if canModifyAll() && isValidProfile(incoming());
     }
 

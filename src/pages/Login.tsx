@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../lib/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '../lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -17,13 +18,26 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [isSignUp, setIsSignUp] = useState(false);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setLoading(true);
     setError('');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      if (isSignUp) {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        // Ensure the initial profile gets created
+        await setDoc(doc(db, 'profiles', cred.user.uid), {
+          full_name: email.split('@')[0],
+          role: email === 'fespugtsalamanca@gmail.com' ? 'superadmin' : 'consulta',
+          created_at: Date.now(),
+          updated_at: Date.now()
+        });
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Error de autenticación');
@@ -46,7 +60,7 @@ export default function Login() {
           <CardHeader>
             <CardTitle>Acceso al Panel</CardTitle>
             <CardDescription>
-              Introduce tus credenciales para acceder.
+              {isSignUp ? "Crea una nueva cuenta para acceder." : "Introduce tus credenciales para acceder."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -81,9 +95,22 @@ export default function Login() {
               )}
 
               <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={loading}>
-                {loading ? 'Entrando...' : 'Iniciar Sesión'}
+                {loading ? 'Procesando...' : isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'}
               </Button>
             </form>
+            
+            <div className="mt-4 text-center">
+              <button 
+                type="button" 
+                className="text-xs text-slate-500 hover:text-slate-800 hover:underline"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError('');
+                }}
+              >
+                {isSignUp ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Regístrate"}
+              </button>
+            </div>
           </CardContent>
         </Card>
       </div>
