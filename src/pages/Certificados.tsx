@@ -68,13 +68,13 @@ export default function Certificados() {
   };
 
   const handleCopyLink = (token: string) => {
-    const url = `${window.location.origin}/v/${token}`;
+    const url = `${window.location.origin}/#/v/${token}`;
     navigator.clipboard.writeText(url);
     toast.info("Enlace de verificación público copiado al portapapeles.");
   };
 
   const handlePrint = (token: string) => {
-    window.open(`/v/${token}?print=true`, '_blank');
+    window.open(`/#/v/${token}?print=true`, '_blank');
   };
 
   return (

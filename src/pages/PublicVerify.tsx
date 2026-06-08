@@ -82,7 +82,16 @@ export default function PublicVerify() {
   }
 
   const isValid = cert.status === 'válido';
-  const verifyUrl = `${window.location.origin}/v/${cert.verification_token}`;
+  const verifyUrl = `${window.location.origin}/#/v/${cert.verification_token}`;
+
+  useEffect(() => {
+    if (isPrint && cert && isValid) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isPrint, cert, isValid]);
 
   return (
     <div className={`min-h-screen ${isPrint ? 'bg-white' : 'bg-slate-50 py-8 px-4'} flex flex-col items-center`}>
