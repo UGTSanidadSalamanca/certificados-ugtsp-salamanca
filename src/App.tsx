@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet, Link, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
@@ -30,8 +30,14 @@ const Layout = () => {
   ];
 
   const handleLogout = async () => {
-    await signOut(auth);
-    window.location.href = '/login';
+    localStorage.removeItem('ugt_local_user');
+    try {
+      await signOut(auth);
+    } catch {
+      // Ignored if offline or not signed in
+    }
+    window.location.hash = '#/login';
+    window.location.reload();
   };
 
   return (
@@ -95,10 +101,21 @@ const Layout = () => {
 };
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const localUser = localStorage.getItem('ugt_local_user');
+    if (localUser) {
+      try {
+        setUser(JSON.parse(localUser));
+        setLoading(false);
+        return;
+      } catch {
+        // Fall back to firebase
+      }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
@@ -111,7 +128,7 @@ export default function App() {
   const isAuth = !!user;
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<Navigate to={isAuth ? "/dashboard" : "/login"} replace />} />
         <Route path="/login" element={<Login />} />
@@ -127,6 +144,6 @@ export default function App() {
         {/* Public Routes */}
         <Route path="/v/:token" element={<PublicVerify />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
