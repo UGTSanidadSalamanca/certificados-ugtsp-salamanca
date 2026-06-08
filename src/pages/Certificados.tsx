@@ -17,6 +17,8 @@ export default function Certificados() {
   const [actions, setActions] = useState<TrainingAction[]>([]);
   const [participants, setParticipants] = useState<Person[]>([]);
   const [open, setOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState('');
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
 
   // Form State
   const [actionId, setActionId] = useState('');
@@ -69,12 +71,30 @@ export default function Certificados() {
 
   const handleCopyLink = (token: string) => {
     const url = `${window.location.origin}/#/v/${token}`;
-    navigator.clipboard.writeText(url);
-    toast.info("Enlace de verificación público copiado al portapapeles.");
-  };
-
-  const handlePrint = (token: string) => {
-    window.open(`${window.location.origin}/#/v/${token}?print=true`, '_blank');
+    setCopiedLink(url);
+    setCopyDialogOpen(true);
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url)
+        .then(() => {
+          toast.success("Enlace copiado al portapapeles.");
+        })
+        .catch((err) => {
+          console.warn("Clipboard copy blocked", err);
+        });
+    } else {
+      try {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        toast.success("Enlace copiado.");
+      } catch (e) {
+        console.warn("ExecCommand copy failed", e);
+      }
+    }
   };
 
   return (
@@ -155,14 +175,20 @@ export default function Certificados() {
                 </TableCell>
                 <TableCell>{c.role_certified}</TableCell>
                 <TableCell>{getStateBadge(c.status)}</TableCell>
-                <TableCell className="text-right space-x-2">
-                   <div className="flex justify-end items-center gap-2">
+                <TableCell className="text-right">
+                   <div className="flex justify-end items-center gap-2 font-mono">
                       <Button variant="ghost" size="icon" title="Copiar Enlace Público" onClick={() => handleCopyLink(c.verification_token)}>
                         <LinkIcon className="w-4 h-4 text-slate-400" />
                       </Button>
-                      <Button variant="ghost" size="icon" title="Imprimir / Ver" onClick={() => handlePrint(c.verification_token)}>
-                        <Printer className="w-4 h-4 text-slate-400" />
-                      </Button>
+                      <a 
+                        href={`${window.location.origin}/#/v/${c.verification_token}?print=true`}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
+                        title="Imprimir / Ver"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </a>
 
                       {c.status === 'borrador' && (
                         <Button variant="ghost" size="icon" title="Validar" onClick={() => handleUpdateState(c.id, 'válido')}>
@@ -186,6 +212,54 @@ export default function Certificados() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Verificación Pública</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-slate-500">
+              Cualquier persona con este enlace podrá verificar en línea e imprimir la legitimidad del certificado de formación.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={copiedLink}
+                className="flex-1 px-3 py-2 text-xs border rounded-lg bg-slate-50 text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-300 font-mono select-all"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <Button 
+                onClick={() => {
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(copiedLink)
+                      .then(() => toast.success("Enlace copiado."))
+                      .catch(() => {
+                        toast.error("Error al copiar automáticamente.");
+                      });
+                  } else {
+                    toast.error("Tu navegador bloquea el portapapeles.");
+                  }
+                }}
+                className="bg-slate-900 text-white shrink-0"
+              >
+                Copiar
+              </Button>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <a
+                href={copiedLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors border"
+              >
+                Abrir Enlace Público <Printer className="w-3.5 h-3.5 ml-1.5" />
+              </a>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -142,3 +142,16 @@
     @apply bg-background text-foreground font-sans;
   }
 }
+
+@media print {
+  body, html {
+    background-color: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

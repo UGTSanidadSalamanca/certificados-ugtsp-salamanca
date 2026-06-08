@@ -82,33 +82,58 @@ export default function PublicVerify() {
   }
 
   const isValid = cert.status === 'válido';
+  const isPrintable = cert.status === 'válido' || cert.status === 'borrador';
   const verifyUrl = `${window.location.origin}/#/v/${cert.verification_token}`;
 
   useEffect(() => {
-    if (isPrint && cert && isValid) {
+    if (isPrint && cert && isPrintable) {
       const timer = setTimeout(() => {
         window.print();
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [isPrint, cert, isValid]);
+  }, [isPrint, cert, isPrintable]);
 
   return (
     <div className={`min-h-screen ${isPrint ? 'bg-white' : 'bg-slate-50 py-8 px-4'} flex flex-col items-center`}>
       
       {!isPrint && (
-        <div className="max-w-[297mm] w-full mb-6 mx-auto flex flex-col gap-4">
+        <div className="max-w-[297mm] w-full mb-6 mx-auto flex flex-col gap-4 no-print">
            {/* Verification Status Header */}
-           <div className={`p-4 rounded-xl border flex items-start gap-4 ${isValid ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-              {isValid ? <ShieldCheck className="w-8 h-8 text-emerald-600 shrink-0" /> : <ShieldAlert className="w-8 h-8 text-red-600 shrink-0" />}
+           <div className={`p-4 rounded-xl border flex items-start gap-4 ${
+             cert.status === 'válido' 
+               ? 'bg-emerald-50 border-emerald-200' 
+               : cert.status === 'borrador' 
+                 ? 'bg-amber-50 border-amber-200' 
+                 : 'bg-red-50 border-red-200'
+           }`}>
+              {cert.status === 'válido' && <ShieldCheck className="w-8 h-8 text-emerald-600 shrink-0" />}
+              {cert.status === 'borrador' && <Info className="w-8 h-8 text-amber-600 shrink-0" />}
+              {cert.status !== 'válido' && cert.status !== 'borrador' && <ShieldAlert className="w-8 h-8 text-red-600 shrink-0" />}
               <div>
-                <h2 className={`font-bold text-lg tracking-tight ${isValid ? 'text-emerald-900' : 'text-red-900'}`}>
-                  {isValid ? 'Documento Acreditativo Interno Válido' : `Estado: ${cert.status.toUpperCase()}`}
+                <h2 className={`font-bold text-lg tracking-tight ${
+                  cert.status === 'válido' 
+                    ? 'text-emerald-950' 
+                    : cert.status === 'borrador' 
+                      ? 'text-amber-950' 
+                      : 'text-red-950'
+                }`}>
+                  {cert.status === 'válido' && 'Documento Acreditativo Interno Válido'}
+                  {cert.status === 'borrador' && 'Vista Previa de Borrador (No Validado)'}
+                  {cert.status === 'revocado' && 'Certificado Revocado'}
+                  {cert.status === 'anulado' && 'Certificado Anulado'}
                 </h2>
-                <p className={`text-sm mt-1 ${isValid ? 'text-emerald-700' : 'text-red-700'}`}>
-                  {isValid 
-                    ? `Este certificado es auténtico y está registrado en UGT Servicios Públicos bajo el código único: ${cert.visible_code}.` 
-                    : 'Este documento no es válido en el sistema actualmente.'}
+                <p className={`text-sm mt-1 ${
+                  cert.status === 'válido' 
+                    ? 'text-emerald-800' 
+                    : cert.status === 'borrador' 
+                      ? 'text-amber-800' 
+                      : 'text-red-800'
+                }`}>
+                  {cert.status === 'válido' && `Este certificado es auténtico y está registrado en UGT Servicios Públicos bajo el código único: ${cert.visible_code}.`}
+                  {cert.status === 'borrador' && `Este es un borrador del certificado de formación. Al validarse, se registrará de forma permanente. Puedes imprimirlo o descargarlo como boceto.`}
+                  {cert.status === 'revocado' && `Este certificado ha sido revocado y carece de validez legal o acreditativa.`}
+                  {cert.status === 'anulado' && `Este certificado ha sido anulado.`}
                 </p>
                 <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
                    <Info className="w-4 h-4" /> Los datos personales han sido anonimizados por protección de datos.
@@ -117,7 +142,7 @@ export default function PublicVerify() {
            </div>
            
            <div className="flex justify-end">
-              <Button onClick={handleDownloadPDF} disabled={!isValid || downloading} className="bg-slate-900 text-white">
+              <Button onClick={handleDownloadPDF} disabled={!isPrintable || downloading} className="bg-slate-900 text-white">
                 <Download className="w-4 h-4 mr-2" /> {downloading ? 'Generando...' : 'Descargar PDF'}
               </Button>
            </div>
