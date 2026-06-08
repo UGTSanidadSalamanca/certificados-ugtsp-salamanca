@@ -67,6 +67,19 @@ export default function PublicVerify() {
     setDownloading(false);
   };
 
+  const isValid = cert ? cert.status === 'válido' : false;
+  const isPrintable = cert ? (cert.status === 'válido' || cert.status === 'borrador') : false;
+  const verifyUrl = cert ? `${window.location.origin}/#/v/${cert.verification_token}` : '';
+
+  useEffect(() => {
+    if (isPrint && cert && isPrintable) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isPrint, cert, isPrintable]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center">Verificando...</div>;
 
   if (!cert) {
@@ -80,19 +93,6 @@ export default function PublicVerify() {
       </div>
     );
   }
-
-  const isValid = cert.status === 'válido';
-  const isPrintable = cert.status === 'válido' || cert.status === 'borrador';
-  const verifyUrl = `${window.location.origin}/#/v/${cert.verification_token}`;
-
-  useEffect(() => {
-    if (isPrint && cert && isPrintable) {
-      const timer = setTimeout(() => {
-        window.print();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [isPrint, cert, isPrintable]);
 
   return (
     <div className={`min-h-screen ${isPrint ? 'bg-white' : 'bg-slate-50 py-8 px-4'} flex flex-col items-center`}>
