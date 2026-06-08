@@ -74,7 +74,7 @@ export default function Certificados() {
   };
 
   const handlePrint = (token: string) => {
-    window.open(`/#/v/${token}?print=true`, '_blank');
+    window.open(`${window.location.origin}/#/v/${token}?print=true`, '_blank');
   };
 
   return (
