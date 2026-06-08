@@ -24,24 +24,44 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      // Establish robust local user session first
-      const mockUser = {
-        email: email,
-        uid: email === 'fespugtsalamanca@gmail.com' ? 'admin_local_id' : 'local_user_' + Math.random().toString(36).substring(2, 9),
-        displayName: email.split('@')[0]
-      };
-      localStorage.setItem('ugt_local_user', JSON.stringify(mockUser));
+      let activeUid = 'admin_local_id';
+      let activeDisplayName = email.split('@')[0];
 
       // Attempt background Firebase registration/sign-in just in case
       try {
+        let userCred;
         if (isSignUp) {
-          await createUserWithEmailAndPassword(auth, email, password);
+          userCred = await createUserWithEmailAndPassword(auth, email, password);
         } else {
-          await signInWithEmailAndPassword(auth, email, password);
+          userCred = await signInWithEmailAndPassword(auth, email, password);
+        }
+        if (userCred) {
+          activeUid = userCred.user.uid;
+          activeDisplayName = userCred.user.displayName || email.split('@')[0];
+          
+          // Write profile to Firestore
+          const profileRef = doc(db, 'profiles', activeUid);
+          const profileSnap = await getDoc(profileRef);
+          if (!profileSnap.exists()) {
+            await setDoc(profileRef, {
+              full_name: activeDisplayName,
+              role: 'superadmin',
+              created_at: Date.now(),
+              updated_at: Date.now()
+            });
+          }
         }
       } catch (fbErr) {
         console.warn("Firebase Auth bypassed/offline, proceeding with Local Storage Session.", fbErr);
       }
+
+      // Establish robust local user session first
+      const mockUser = {
+        email: email,
+        uid: activeUid,
+        displayName: activeDisplayName
+      };
+      localStorage.setItem('ugt_local_user', JSON.stringify(mockUser));
 
       // Navigate immediately and reload the state
       window.location.hash = '#/dashboard';
@@ -63,10 +83,30 @@ export default function Login() {
       });
       const cred = await signInWithPopup(auth, provider);
       
+      const activeUid = cred.user.uid;
+      const activeDisplayName = cred.user.displayName || 'Usuario Google';
+      const activeEmail = cred.user.email || 'fespugtsalamanca@gmail.com';
+
+      // Ensure profile exists in Firestore
+      try {
+        const profileRef = doc(db, 'profiles', activeUid);
+        const profileSnap = await getDoc(profileRef);
+        if (!profileSnap.exists()) {
+          await setDoc(profileRef, {
+            full_name: activeDisplayName,
+            role: 'superadmin',
+            created_at: Date.now(),
+            updated_at: Date.now()
+          });
+        }
+      } catch (profileErr) {
+        console.warn("Error creating or reading Firestore profile", profileErr);
+      }
+
       const mockUser = {
-        email: cred.user.email || 'fespugtsalamanca@gmail.com',
-        uid: cred.user.uid,
-        displayName: cred.user.displayName || 'Usuario Google'
+        email: activeEmail,
+        uid: activeUid,
+        displayName: activeDisplayName
       };
       localStorage.setItem('ugt_local_user', JSON.stringify(mockUser));
       

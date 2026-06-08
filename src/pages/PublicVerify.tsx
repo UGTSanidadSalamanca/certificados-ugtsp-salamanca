@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { CertificateDetail } from '../types';
 import { dataStore } from '../lib/store';
 import { QRCodeSVG } from 'qrcode.react';
@@ -141,7 +141,16 @@ export default function PublicVerify() {
               </div>
            </div>
            
-           <div className="flex justify-end">
+           <div className="flex justify-between items-center gap-4">
+              <div>
+                {localStorage.getItem('ugt_local_user') && (
+                  <Link to="/certificados">
+                    <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100">
+                      ← Volver a Certificados
+                    </Button>
+                  </Link>
+                )}
+              </div>
               <Button onClick={handleDownloadPDF} disabled={!isPrintable || downloading} className="bg-slate-900 text-white">
                 <Download className="w-4 h-4 mr-2" /> {downloading ? 'Generando...' : 'Descargar PDF'}
               </Button>

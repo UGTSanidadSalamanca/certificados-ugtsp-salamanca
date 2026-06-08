@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CertificateDetail, TrainingAction, Person } from '../types';
 import { dataStore } from '../lib/store';
 import { Button } from '../components/ui/button';
@@ -180,15 +181,13 @@ export default function Certificados() {
                       <Button variant="ghost" size="icon" title="Copiar Enlace Público" onClick={() => handleCopyLink(c.verification_token)}>
                         <LinkIcon className="w-4 h-4 text-slate-400" />
                       </Button>
-                      <a 
-                        href={`${window.location.origin}/#/v/${c.verification_token}?print=true`}
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                      <Link 
+                        to={`/v/${c.verification_token}?print=true`}
                         className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
                         title="Imprimir / Ver"
                       >
                         <Printer className="w-4 h-4" />
-                      </a>
+                      </Link>
 
                       {c.status === 'borrador' && (
                         <Button variant="ghost" size="icon" title="Validar" onClick={() => handleUpdateState(c.id, 'válido')}>
@@ -248,14 +247,13 @@ export default function Certificados() {
               </Button>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <a
-                href={copiedLink}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to={copiedLink.replace(window.location.origin + '/#', '')}
+                onClick={() => setCopyDialogOpen(false)}
                 className="inline-flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors border"
               >
                 Abrir Enlace Público <Printer className="w-3.5 h-3.5 ml-1.5" />
-              </a>
+              </Link>
             </div>
           </div>
         </DialogContent>

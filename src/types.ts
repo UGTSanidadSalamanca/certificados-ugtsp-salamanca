@@ -4,8 +4,8 @@ export type Profile = {
   id: string; // references auth.users
   full_name: string;
   role: UserRole;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | number;
+  updated_at?: string | number;
 };
 
 export type Person = {
@@ -16,8 +16,8 @@ export type Person = {
   email?: string;
   phone?: string;
   notes_internal?: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | number;
+  updated_at?: string | number;
   created_by?: string;
 };
 
@@ -39,8 +39,8 @@ export type TrainingAction = {
   official_recognition: boolean;
   recognition_text?: string;
   status: ActionStatus;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | number;
+  updated_at?: string | number;
   created_by?: string;
 };
 
@@ -78,8 +78,8 @@ export type Certificate = {
   replaced_by_certificate_id?: string;
   revoked_reason?: string;
   revoked_at?: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | number;
+  updated_at?: string | number;
   created_by?: string;
   issued_by?: string;
 };

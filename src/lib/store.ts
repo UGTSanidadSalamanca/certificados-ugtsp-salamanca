@@ -1,10 +1,20 @@
-import { TrainingAction, Person, Certificate, CertificateDetail, Profile, UserRole, CertificateEvent } from '../types';
+import { TrainingAction, Person, Certificate, CertificateDetail, CertificateEvent } from '../types';
+import { db, auth } from './firebase';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  updateDoc, 
+  query, 
+  where
+} from 'firebase/firestore';
 
 const uid = () => Math.random().toString(36).substring(2, 9);
 const genCode = () => `UGTSP-SA-FOR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000).toString().padStart(4, '0')}-${uid().toUpperCase()}`;
 const genToken = () => crypto.randomUUID ? crypto.randomUUID() : uid() + uid() + uid();
 
-// Keys for LocalStorage
 const KEYS = {
   ACTIONS: 'ugt_training_actions',
   PEOPLE: 'ugt_people',
@@ -12,7 +22,6 @@ const KEYS = {
   EVENTS: 'ugt_certificate_events'
 };
 
-// Initial Seed Data
 const DEFAULT_ACTIONS: TrainingAction[] = [
   {
     id: 'action-1',
@@ -26,8 +35,8 @@ const DEFAULT_ACTIONS: TrainingAction[] = [
     official_recognition: true,
     recognition_text: 'Homologado por la Junta de Castilla y León',
     status: 'Finalizada',
-    created_at: String(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    updated_at: String(Date.now() - 30 * 24 * 60 * 60 * 1000),
+    created_at: Date.now() - 30 * 24 * 60 * 60 * 1000,
+    updated_at: Date.now() - 30 * 24 * 60 * 60 * 1000,
     created_by: 'admin_local_id'
   },
   {
@@ -42,8 +51,8 @@ const DEFAULT_ACTIONS: TrainingAction[] = [
     organizing_entity: 'FESP UGT Salamanca',
     official_recognition: false,
     status: 'Activa',
-    created_at: String(Date.now() - 10 * 24 * 60 * 60 * 1000),
-    updated_at: String(Date.now() - 10 * 24 * 60 * 60 * 1000),
+    created_at: Date.now() - 10 * 24 * 60 * 60 * 1000,
+    updated_at: Date.now() - 10 * 24 * 60 * 60 * 1000,
     created_by: 'admin_local_id'
   }
 ];
@@ -57,8 +66,8 @@ const DEFAULT_PEOPLE: Person[] = [
     email: 'maria.garcia@email.com',
     phone: '600123456',
     notes_internal: 'Afiliada a UGT Correos',
-    created_at: String(Date.now() - 20 * 24 * 60 * 60 * 1000),
-    updated_at: String(Date.now() - 20 * 24 * 60 * 60 * 1000),
+    created_at: Date.now() - 20 * 24 * 60 * 60 * 1000,
+    updated_at: Date.now() - 20 * 24 * 60 * 60 * 1000,
     created_by: 'admin_local_id'
   },
   {
@@ -69,8 +78,8 @@ const DEFAULT_PEOPLE: Person[] = [
     email: 'alejandro.rodriguez@email.com',
     phone: '611987654',
     notes_internal: 'Representante sindical Educación',
-    created_at: String(Date.now() - 15 * 24 * 60 * 60 * 1000),
-    updated_at: String(Date.now() - 15 * 24 * 60 * 60 * 1000),
+    created_at: Date.now() - 15 * 24 * 60 * 60 * 1000,
+    updated_at: Date.now() - 15 * 24 * 60 * 60 * 1000,
     created_by: 'admin_local_id'
   }
 ];
@@ -88,8 +97,8 @@ const DEFAULT_CERTIFICATES: Certificate[] = [
     signed_by_name: 'Felipe Espugt Salamanca',
     signed_by_position: 'Secretario de Formación FESP UGT Salamanca',
     status: 'válido',
-    created_at: String(Date.now() - 8 * 24 * 60 * 60 * 1000),
-    updated_at: String(Date.now() - 8 * 24 * 60 * 60 * 1000),
+    created_at: Date.now() - 8 * 24 * 60 * 60 * 1000,
+    updated_at: Date.now() - 8 * 24 * 60 * 60 * 1000,
     created_by: 'admin_local_id'
   }
 ];
@@ -105,7 +114,6 @@ const DEFAULT_EVENTS: CertificateEvent[] = [
   }
 ];
 
-// Local Helpers to load/save
 function loadData<T>(key: string, defaultData: T[]): T[] {
   const stored = localStorage.getItem(key);
   if (!stored) {
@@ -124,7 +132,6 @@ function saveData<T>(key: string, data: T[]) {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-// Current Local session helper
 export function getLocalUser() {
   const stored = localStorage.getItem('ugt_local_user');
   if (stored) {
@@ -138,66 +145,174 @@ export function getLocalUser() {
 }
 
 export const dataStore = {
+  // Silent auto-seeding to keep cloud and local synchronized
+  async seedFirestoreIfEmpty() {
+    try {
+      const snap = await getDocs(collection(db, 'training_actions'));
+      if (snap.empty) {
+        console.log("Seeding training actions to Firestore...");
+        for (const action of DEFAULT_ACTIONS) {
+          await setDoc(doc(db, 'training_actions', action.id), {
+            ...action,
+            created_at: Date.now() - 30 * 24 * 60 * 60 * 1000,
+            updated_at: Date.now() - 30 * 24 * 60 * 60 * 1000
+          });
+        }
+      }
+      
+      const peopleSnap = await getDocs(collection(db, 'people'));
+      if (peopleSnap.empty) {
+        console.log("Seeding people to Firestore...");
+        for (const p of DEFAULT_PEOPLE) {
+          await setDoc(doc(db, 'people', p.id), {
+            ...p,
+            created_at: Date.now() - 20 * 24 * 60 * 60 * 1000,
+            updated_at: Date.now() - 20 * 24 * 60 * 60 * 1000
+          });
+        }
+      }
+      
+      const certSnap = await getDocs(collection(db, 'certificates'));
+      if (certSnap.empty) {
+        console.log("Seeding certificates to Firestore...");
+        for (const c of DEFAULT_CERTIFICATES) {
+          await setDoc(doc(db, 'certificates', c.id), {
+            ...c,
+            created_at: Date.now() - 8 * 24 * 60 * 60 * 1000,
+            updated_at: Date.now() - 8 * 24 * 60 * 60 * 1000
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Seeding bypassed or system offline.", e);
+    }
+  },
+
   // Actions
   async getActions(): Promise<TrainingAction[]> {
+    await this.seedFirestoreIfEmpty();
+    try {
+      const snap = await getDocs(collection(db, 'training_actions'));
+      const actions = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TrainingAction[];
+      if (actions.length > 0) {
+        saveData(KEYS.ACTIONS, actions);
+        return actions;
+      }
+    } catch (e) {
+      console.warn("Firestore error getting actions, falling back to local storage", e);
+    }
     return loadData<TrainingAction>(KEYS.ACTIONS, DEFAULT_ACTIONS);
   },
   
   async createAction(action: Partial<TrainingAction>): Promise<TrainingAction> {
-    const actions = await this.getActions();
-    const actionId = 'action-' + uid();
-    const currentUser = getLocalUser();
+    const id = 'action-' + uid();
+    const currentUser = auth.currentUser || getLocalUser();
+    const createdBy = currentUser?.uid || 'admin_local_id';
+    
     const payload: TrainingAction = {
       ...(action as any),
-      id: actionId,
-      status: 'Borrador',
+      id,
+      status: action.status || 'Borrador',
       official_recognition: action.official_recognition || false,
-      created_at: String(Date.now()),
-      updated_at: String(Date.now()),
-      created_by: currentUser?.email || 'admin_local_id'
+      created_at: Date.now() as any,
+      updated_at: Date.now() as any,
+      created_by: createdBy
     };
+    
+    // Save locally
+    const actions = await this.getActions();
     actions.unshift(payload);
     saveData(KEYS.ACTIONS, actions);
+    
+    // Save to Firestore
+    try {
+      await setDoc(doc(db, 'training_actions', id), payload);
+    } catch (e) {
+      console.error("Firestore error creating action", e);
+    }
     return payload;
   },
   
   async updateAction(id: string, action: Partial<TrainingAction>): Promise<void> {
+    // Local
     const actions = await this.getActions();
     const index = actions.findIndex(a => a.id === id);
     if (index !== -1) {
       actions[index] = {
         ...actions[index],
         ...action,
-        updated_at: String(Date.now())
+        updated_at: Date.now() as any
       };
       saveData(KEYS.ACTIONS, actions);
+    }
+    
+    // Firestore
+    try {
+      await setDoc(doc(db, 'training_actions', id), {
+        ...action,
+        updated_at: Date.now()
+      }, { merge: true });
+    } catch (e) {
+      console.error("Firestore error updating action", e);
     }
   },
 
   // People
   async getPeople(): Promise<Person[]> {
+    try {
+      const snap = await getDocs(collection(db, 'people'));
+      const people = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Person[];
+      if (people.length > 0) {
+        saveData(KEYS.PEOPLE, people);
+        return people;
+      }
+    } catch (e) {
+      console.warn("Firestore error getting people, falling back to local storage", e);
+    }
     return loadData<Person>(KEYS.PEOPLE, DEFAULT_PEOPLE);
   },
   
   async createPerson(p: Partial<Person>): Promise<Person> {
-    const people = await this.getPeople();
     const id = 'person-' + uid();
-    const currentUser = getLocalUser();
+    const currentUser = auth.currentUser || getLocalUser();
+    const createdBy = currentUser?.uid || 'admin_local_id';
+    
     const payload: Person = {
       ...(p as any),
       id,
-      created_at: String(Date.now()),
-      updated_at: String(Date.now()),
-      created_by: currentUser?.email || 'admin_local_id'
+      created_at: Date.now() as any,
+      updated_at: Date.now() as any,
+      created_by: createdBy
     };
+    
+    // Local
+    const people = await this.getPeople();
     people.unshift(payload);
     saveData(KEYS.PEOPLE, people);
+    
+    // Firestore
+    try {
+      await setDoc(doc(db, 'people', id), payload);
+    } catch (e) {
+      console.error("Firestore error creating person", e);
+    }
     return payload;
   },
 
   // Certificates
   async getCertificates(): Promise<CertificateDetail[]> {
-    const certs = loadData<Certificate>(KEYS.CERTIFICATES, DEFAULT_CERTIFICATES);
+    let certs: Certificate[] = [];
+    try {
+      const snap = await getDocs(collection(db, 'certificates'));
+      certs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Certificate[];
+      if (certs.length > 0) {
+        saveData(KEYS.CERTIFICATES, certs);
+      }
+    } catch (e) {
+      console.warn("Firestore error getting certificates, falling back to local storage", e);
+      certs = loadData<Certificate>(KEYS.CERTIFICATES, DEFAULT_CERTIFICATES);
+    }
+    
     const actions = await this.getActions();
     const people = await this.getPeople();
     
@@ -228,9 +343,32 @@ export const dataStore = {
   },
   
   async getCertificateByToken(token: string): Promise<CertificateDetail | null> {
-    const certs = loadData<Certificate>(KEYS.CERTIFICATES, DEFAULT_CERTIFICATES);
-    const c = certs.find(x => x.verification_token === token || x.visible_code === token);
-    if (!c) return null;
+    let c: Certificate | null = null;
+    
+    // Query Firestore
+    try {
+      const q = query(collection(db, 'certificates'), where('verification_token', '==', token));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        c = { id: snap.docs[0].id, ...snap.docs[0].data() } as Certificate;
+      } else {
+        // Query by code as well
+        const qCode = query(collection(db, 'certificates'), where('visible_code', '==', token));
+        const snapCode = await getDocs(qCode);
+        if (!snapCode.empty) {
+          c = { id: snapCode.docs[0].id, ...snapCode.docs[0].data() } as Certificate;
+        }
+      }
+    } catch (e) {
+      console.warn("Firestore error querying certificate by token, falling back to local storage", e);
+    }
+    
+    if (!c) {
+      const certs = loadData<Certificate>(KEYS.CERTIFICATES, DEFAULT_CERTIFICATES);
+      const found = certs.find(x => x.verification_token === token || x.visible_code === token);
+      if (!found) return null;
+      c = found;
+    }
     
     const actions = await this.getActions();
     const people = await this.getPeople();
@@ -260,9 +398,9 @@ export const dataStore = {
   },
 
   async createCertificate(payload: Partial<Certificate>): Promise<Certificate> {
-    const certs = loadData<Certificate>(KEYS.CERTIFICATES, DEFAULT_CERTIFICATES);
     const id = 'cert-' + uid();
-    const currentUser = getLocalUser();
+    const currentUser = auth.currentUser || getLocalUser();
+    const createdBy = currentUser?.uid || 'admin_local_id';
     
     const dataObj: Certificate = {
        ...(payload as any),
@@ -271,52 +409,77 @@ export const dataStore = {
        issue_date: new Date().toISOString(),
        visible_code: genCode(),
        verification_token: genToken(),
-       created_at: String(Date.now()),
-       updated_at: String(Date.now()),
-       created_by: currentUser?.email || 'admin_local_id'
+       created_at: Date.now() as any,
+       updated_at: Date.now() as any,
+       created_by: createdBy
     };
+    
+    // Save local
+    const certs = loadData<Certificate>(KEYS.CERTIFICATES, DEFAULT_CERTIFICATES);
     certs.unshift(dataObj);
     saveData(KEYS.CERTIFICATES, certs);
+    
+    // Save to Firestore
+    try {
+      await setDoc(doc(db, 'certificates', id), dataObj);
+    } catch (e) {
+      console.error("Firestore error creating certificate", e);
+    }
     return dataObj;
   },
 
   async updateCertificateState(id: string, state: Certificate['status'], reason?: string): Promise<void> {
+    const currentUser = auth.currentUser || getLocalUser();
+    const performedBy = currentUser?.uid || 'admin_local_id';
+    const updateData: any = {
+      status: state,
+      updated_at: Date.now()
+    };
+    if (state === 'revocado' || state === 'anulado') {
+      updateData.revoked_at = new Date().toISOString();
+      if (reason) updateData.revoked_reason = reason;
+    }
+    
+    // Save Local
     const certs = loadData<Certificate>(KEYS.CERTIFICATES, DEFAULT_CERTIFICATES);
     const index = certs.findIndex(c => c.id === id);
     if (index !== -1) {
-      const updateData: Partial<Certificate> = {
-        status: state,
-        updated_at: String(Date.now())
-      };
-      if (state === 'revocado' || state === 'anulado') {
-        updateData.revoked_at = new Date().toISOString();
-        if (reason) updateData.revoked_reason = reason;
-      }
-      
       certs[index] = {
         ...certs[index],
         ...updateData
       };
       saveData(KEYS.CERTIFICATES, certs);
       
-      // Log event
       const events = loadData<CertificateEvent>(KEYS.EVENTS, DEFAULT_EVENTS);
-      const currentUser = getLocalUser();
       const eventId = 'evt-' + uid();
-      
       events.unshift({
         id: eventId,
         certificate_id: id,
         event_type: 'STATUS_CHANGE',
         event_description: `Estado cambiado a ${state}${reason ? ' - Razón: ' + reason : ''}`,
-        performed_by: currentUser?.email || 'admin_local_id',
+        performed_by: performedBy,
         created_at: String(Date.now())
       });
       saveData(KEYS.EVENTS, events);
     }
+    
+    // Save Firestore
+    try {
+      await setDoc(doc(db, 'certificates', id), updateData, { merge: true });
+      
+      const eventId = 'evt-' + uid();
+      await setDoc(doc(db, 'certificate_events', eventId), {
+        certificate_id: id,
+        event_type: 'STATUS_CHANGE',
+        event_description: `Estado cambiado a ${state}${reason ? ' - Razón: ' + reason : ''}`,
+        performed_by: performedBy,
+        created_at: Date.now()
+      });
+    } catch (e) {
+      console.error("Firestore error updating certificate state", e);
+    }
   },
 
-  // Export / Import Backup Methods
   exportDatabase(): string {
     const database = {
       actions: loadData<TrainingAction>(KEYS.ACTIONS, DEFAULT_ACTIONS),
